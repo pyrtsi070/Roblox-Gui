@@ -1,4 +1,3 @@
--- MainScript.lua
 local player = game.Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -43,4 +42,42 @@ logger.Initialize(frame)
 -- Connect button to toggle the logger visibility
 logButton.MouseButton1Click:Connect(function()
     logger.Toggle()
+end)
+
+-- Monitor remotes in ReplicatedStorage
+local replicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Hook into RemoteFunction and RemoteEvent
+local function hookRemote(remote)
+    if remote:IsA("RemoteFunction") then
+        logger.AddMessage("[RemoteFunction] Detected: " .. remote.Name)
+
+        -- Log RemoteFunction invoke
+        remote.OnClientInvoke = function(...)
+            logger.AddMessage("[RemoteFunction] Invoked: " .. remote.Name)
+            logger.AddMessage("Arguments: " .. tostring(...))
+        end
+    elseif remote:IsA("RemoteEvent") then
+        logger.AddMessage("[RemoteEvent] Detected: " .. remote.Name)
+
+        -- Log RemoteEvent trigger
+        remote.OnClientEvent:Connect(function(...)
+            logger.AddMessage("[RemoteEvent] Triggered: " .. remote.Name)
+            logger.AddMessage("Arguments: " .. tostring(...))
+        end)
+    end
+end
+
+-- Monitor all current remotes in ReplicatedStorage
+for _, remote in pairs(replicatedStorage:GetDescendants()) do
+    if remote:IsA("RemoteFunction") or remote:IsA("RemoteEvent") then
+        hookRemote(remote)
+    end
+end
+
+-- Monitor newly added remotes in ReplicatedStorage
+replicatedStorage.DescendantAdded:Connect(function(remote)
+    if remote:IsA("RemoteFunction") or remote:IsA("RemoteEvent") then
+        hookRemote(remote)
+    end
 end)
